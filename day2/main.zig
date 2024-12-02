@@ -6,18 +6,27 @@ pub fn main() !void {
     // var raports = std.mem.splitScalar(u8, test_input, '\n');
     var raports = std.mem.splitScalar(u8, input, '\n');
 
-    var safe_rapports: u32 = 0;
+    var safe_rapports1: u32 = 0;
+    var safe_rapports2: u32 = 0;
     while (raports.next()) |report| {
         if (report.len == 0) continue;
 
         const is_safe = try fsmSafe(report);
 
-        std.log.debug("Rapport: ({}) '{s}'", .{ is_safe, report });
+        switch (is_safe) {
+            .part1 => {
+                safe_rapports1 += 1;
+                safe_rapports2 += 1;
+            },
+            .part2 => safe_rapports2 += 1,
+            .fail => {},
+        }
 
-        safe_rapports += @intFromBool(is_safe);
+        std.log.debug("Rapport: ({}) '{s}'", .{ is_safe != .fail, report });
     }
 
-    std.log.info("Safe rapports: {d}\n", .{safe_rapports});
+    std.log.info("Part 1: {d}", .{safe_rapports1});
+    std.log.info("Part 2: {d}", .{safe_rapports2});
 }
 
 const State = enum {
@@ -38,7 +47,13 @@ const Order = enum {
     }
 };
 
-fn fsmSafe(rapport: []const u8) !bool {
+const Completion = enum {
+    part1,
+    part2,
+    fail,
+};
+
+fn fsmSafe(rapport: []const u8) !Completion {
     var data_points = std.mem.splitScalar(u8, rapport, ' ');
 
     var order: Order = undefined;
@@ -49,7 +64,7 @@ fn fsmSafe(rapport: []const u8) !bool {
         .First => {
             const log = std.log.scoped(.first);
 
-            const data_point = data_points.next() orelse return true;
+            const data_point = data_points.next() orelse return if (ignored_one) .part2 else .part1;
             const point = try std.fmt.parseInt(u32, data_point, 10);
 
             if (last_point < point)
@@ -62,7 +77,7 @@ fn fsmSafe(rapport: []const u8) !bool {
             if (!isSafe(last_point, point, order)) {
                 log.debug("Unsafe: already_ignored {}", .{ignored_one});
                 if (ignored_one) {
-                    if (ignored_first) return false;
+                    if (ignored_first) return .fail;
 
                     ignored_first = true;
                     log.debug("Ignoring first value", .{});
@@ -84,7 +99,7 @@ fn fsmSafe(rapport: []const u8) !bool {
         .After => {
             const log = std.log.scoped(.second);
 
-            const data_point = data_points.next() orelse return true;
+            const data_point = data_points.next() orelse return if (ignored_one) .part2 else .part1;
             const point = try std.fmt.parseInt(u32, data_point, 10);
 
             log.debug("last: {d}, curr {d}; order {s}", .{ last_point, point, @tagName(order) });
@@ -93,7 +108,7 @@ fn fsmSafe(rapport: []const u8) !bool {
                 log.debug("Unsafe: already_ignored {}", .{ignored_one});
 
                 if (ignored_one) {
-                    if (ignored_first) return false;
+                    if (ignored_first) return .fail;
 
                     ignored_first = true;
                     log.debug("Trying ignore first elem", .{});
