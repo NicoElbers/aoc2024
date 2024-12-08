@@ -3,3 +3,5 @@
 **.o
 **/main
 **/simple
+**/flamegraph.svg
+**/perf.data*
