@@ -1,8 +1,19 @@
 pub fn main() !void {
     const in = input;
 
-    std.log.info("Part 1: {d}", .{try fsm(in, false)});
-    std.log.info("Part 2: {d}", .{try fsm(in, true)});
+    var timer = std.time.Timer.start() catch unreachable;
+
+    const part1 = try fsm(in, false);
+
+    std.log.info("Part 1: {d}ns", .{timer.read()});
+    timer.reset();
+
+    const part2 = try fsm(in, true);
+    std.log.info("Part 2: {d}ns", .{timer.read()});
+
+    const stdout = std.io.getStdOut().writer();
+    try std.fmt.format(stdout, "Part 1: {d}\n", .{part1});
+    try std.fmt.format(stdout, "Part 2: {d}\n", .{part2});
 }
 
 const test_input = @embedFile("test_input");
