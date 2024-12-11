@@ -27,12 +27,14 @@ fn sumTrailHeads(alloc: Allocator, map: WorldMap) !struct { u32, u32 } {
     var part1: u32 = 0;
     var part2: u32 = 0;
 
-    var stack = std.ArrayList(PosCount).init(alloc);
+    // Hashmaps are seemingly slow to create, so reuse them as much as
+    // possible
     var found_nines = std.AutoHashMap(Position, void).init(alloc);
 
     var pos_seen: usize = 0;
     while (std.mem.indexOfScalarPos(u8, map.buf, pos_seen, '0')) |idx| {
-        defer stack.clearRetainingCapacity();
+        var stack = std.ArrayList(PosCount).init(alloc);
+
         defer found_nines.clearRetainingCapacity();
         pos_seen = idx + 1;
 
