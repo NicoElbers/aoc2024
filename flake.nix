@@ -24,6 +24,8 @@
       {
         devShells.default = with pkgs; mkShell {
           packages = [
+            lldb
+            linuxKernel.packages.linux_zen.perf
             bashInteractive
             zig_bound
             zls_bound
