@@ -24,8 +24,8 @@ pub fn main() !void {
     assert(part2 == 218817038947400);
 
     const stdout = std.io.getStdOut().writer();
-    try std.fmt.format(stdout, "Part 1: {d}\n", .{part1});
-    try std.fmt.format(stdout, "Part 2: {d}\n", .{part2});
+    try std.fmt.format(stdout, "Part 1: {d} (183484)\n", .{part1});
+    try std.fmt.format(stdout, "Part 2: {d} (218817038947400)\n", .{part2});
 }
 
 const Map = std.AutoHashMap(Num, Num);
@@ -39,11 +39,12 @@ fn countRocks(alloc: Allocator, rocks: std.ArrayList(Num), blinks: usize) !Num {
 
     for (rocks.items) |rock| {
         const entry = try curr.getOrPut(rock);
-        if (entry.found_existing) {
-            entry.value_ptr.* += 1;
-        } else {
-            entry.value_ptr.* = 1;
+
+        if (!entry.found_existing) {
+            entry.value_ptr.* = 0;
         }
+
+        entry.value_ptr.* += 1;
     }
 
     for (0..blinks) |_| {
@@ -58,27 +59,52 @@ fn countRocks(alloc: Allocator, rocks: std.ArrayList(Num), blinks: usize) !Num {
         }
 
         var key_iter = curr.keyIterator();
-        // TODO: Make pretty
-        while (key_iter.next()) |rock| {
-            const rock1, const rock2 = try Rules.applyRock(rock.*);
+        while (key_iter.next()) |rock_ptr| {
+            const rock = rock_ptr.*;
 
-            {
-                const entry = next.getOrPutAssumeCapacity(rock1);
-                if (entry.found_existing) {
-                    entry.value_ptr.* += curr.get(rock.*).?;
-                } else {
-                    entry.value_ptr.* = curr.get(rock.*).?;
+            if (rock == 0) {
+                const entry = next.getOrPutAssumeCapacity(1);
+
+                if (!entry.found_existing) {
+                    entry.value_ptr.* = 0;
                 }
+
+                entry.value_ptr.* += curr.get(0).?;
+
+                continue;
             }
 
-            if (rock2) |r2| {
-                const entry = next.getOrPutAssumeCapacity(r2);
-                if (entry.found_existing) {
-                    entry.value_ptr.* += curr.get(rock.*).?;
-                } else {
-                    entry.value_ptr.* = curr.get(rock.*).?;
+            assert(rock != 0);
+
+            const digits = countDigits(rock);
+            if (digits % 2 == 0) {
+                const mult = try std.math.powi(Num, 10, @intCast(digits / 2));
+
+                const left = @divTrunc(rock, mult);
+                const right = @rem(rock, mult);
+
+                inline for (.{ left, right }) |r| {
+                    const entry = next.getOrPutAssumeCapacity(r);
+
+                    if (!entry.found_existing) {
+                        entry.value_ptr.* = 0;
+                    }
+
+                    entry.value_ptr.* += curr.get(rock).?;
                 }
+
+                continue;
             }
+
+            assert(digits % 2 == 1);
+
+            const entry = next.getOrPutAssumeCapacity(rock * 2024);
+
+            if (!entry.found_existing) {
+                entry.value_ptr.* = 0;
+            }
+
+            entry.value_ptr.* += curr.get(rock).?;
         }
     }
 
@@ -102,63 +128,29 @@ fn parseRocks(alloc: Allocator, buf: []const u8) !std.ArrayList(Num) {
     return arr;
 }
 
+fn countDigits(n: Num) usize {
+    // Interestingly, this seemingly faster constant time operation is slower
+    // than the loop. I guess either some LLVM intrisics pick up on the fact
+    // I'm counting the digits or maybe the float conversions are just abysmally
+    // slow. Who knows.
+    // if (n == 0) return 1;
+    //
+    // const f: f64 = @floatFromInt(n);
+    // const digits = @floor(@log10(f)) + 1;
+    // return @intFromFloat(digits);
+
+    var n_copy = n;
+
+    var digits: usize = 0;
+    while (n_copy > 0) : ({
+        n_copy = @divTrunc(n_copy, 10);
+        digits += 1;
+    }) {}
+    return digits;
+}
+
 const input = @embedFile("input");
 const test_input = @embedFile("test_input");
-
-const Rules = enum {
-    zero,
-    digits,
-    @"2024",
-
-    fn aplicableRule(n: Num, digits: usize) Rules {
-        if (n == 0) return .zero;
-
-        if (digits % 2 == 0) return .digits;
-
-        return .@"2024";
-    }
-
-    // Ugly ass function
-    pub fn applyRock(rock: Num) !struct { Num, ?Num } {
-        const digits = countDigits(rock);
-
-        const rule = aplicableRule(rock, digits);
-
-        return switch (rule) {
-            .zero => .{ 1, null },
-            .digits => blk: {
-                const mult = try std.math.powi(Num, 10, @intCast(digits / 2));
-
-                const left = @divTrunc(rock, mult);
-                const right = @rem(rock, mult);
-
-                break :blk .{ left, right };
-            },
-            .@"2024" => .{ rock * 2024, null },
-        };
-    }
-
-    fn countDigits(n: Num) usize {
-        // Interestingly, this seemingly faster constant time operation is slower
-        // than the loop. I guess either some LLVM intrisics pick up on the fact
-        // I'm counting the digits or maybe the float conversions are just abysmally
-        // slow. Who knows.
-        // if (n == 0) return 1;
-        //
-        // const f: f64 = @floatFromInt(n);
-        // const digits = @floor(@log10(f)) + 1;
-        // return @intFromFloat(digits);
-
-        var n_copy = n;
-
-        var digits: usize = 0;
-        while (n_copy > 0) : ({
-            n_copy = @divTrunc(n_copy, 10);
-            digits += 1;
-        }) {}
-        return digits;
-    }
-};
 
 const std = @import("std");
 const assert = std.debug.assert;
