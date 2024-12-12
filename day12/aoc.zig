@@ -8,6 +8,7 @@ pub const Position = struct {
 };
 pub const WorldMap = struct {
     buf: []u8,
+    original: []const u8,
     height: usize,
     width: usize,
     boundary: u8,
@@ -19,6 +20,7 @@ pub const WorldMap = struct {
 
         return WorldMap{
             .buf = try alloc.dupe(u8, buf),
+            .original = buf,
             .width = full_width,
             .height = height - 1,
             .boundary = boundary,
@@ -56,6 +58,15 @@ pub const WorldMap = struct {
         const idx = self.coordsToIdx(pos) orelse return null;
 
         const out = self.buf[idx];
+        assert(out != self.boundary);
+
+        return out;
+    }
+
+    pub fn getOrig(self: WorldMap, pos: Position) ?u8 {
+        const idx = self.coordsToIdx(pos) orelse return null;
+
+        const out = self.original[idx];
         assert(out != self.boundary);
 
         return out;
